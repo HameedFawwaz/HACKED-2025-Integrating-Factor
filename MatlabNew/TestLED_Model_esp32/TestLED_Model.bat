@@ -1,0 +1,4 @@
+
+set MATLAB=C:\Program Files\MATLAB\R2024b
+
+"%MATLAB%\bin\%MATLAB_WIN_VER%\gmake" -f TestLED_Model.mk  GENERATE_ASAP2=0 OPTS="-DTID01EQ=0"
