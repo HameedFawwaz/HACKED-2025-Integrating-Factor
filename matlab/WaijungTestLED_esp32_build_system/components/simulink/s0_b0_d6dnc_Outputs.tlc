@@ -1,0 +1,37 @@
+%implements s0_b0_d6dnc_Outputs "C"
+
+%function Outputs(block, system) Output
+%assign cfgTxt = ""
+%openfile cfgTxt
+%assign localVarDecl = ""
+%assign tlcOutputsFcnOfS0B0 = OpaqueTLCBlockFcn("Outputs", 0, 0, 0, 0, 0)
+%assign tlcOutputsFcnOfS0B1 = OpaqueTLCBlockFcn("Outputs", 0, 1, 0, 0, 1)
+/* {S!d50}DiscretePulseGenerator: '<Root>/Pulse Generator' */
+/*@>1416*/WaijungTestLED_B./*@>17e9*/PulseGenerator/*@>fe*/ = ((/*@>1436*/WaijungTestLED_DW./*@>17ec*/clockTickCounter/*@>f8*/ < /*@>c51*/1)/*@>fb*/ && (/*@>143c*/WaijungTestLED_DW./*@>17ef*/clockTickCounter/*@>fa*/ >= /*@>c2f*/0));
+/* {S!d52}DiscretePulseGenerator: '<Root>/Pulse Generator' */
+/*@>e4c*/if (/*@>1442*/WaijungTestLED_DW./*@>17f2*/clockTickCounter/*@>104*/ >= /*@>c52*/1) {
+    /*@>1454*/WaijungTestLED_DW./*@>17f8*/clockTickCounter/*@>e4f*/ = /*@>17bd*/0;
+} else {
+    /*@>1448*/WaijungTestLED_DW./*@>17f5*/clockTickCounter/*@>17c4*/++;
+}
+%if !WHITE_SPACE(tlcOutputsFcnOfS0B0)
+/* {S!d54}S-Function (esp32_digital_output): '<Root>/Digital Output' */
+%<SLibCG_DumpSSCode("/*@[1564*/",tlcOutputsFcnOfS0B0,"/*@]*/")>\
+%endif
+%if !WHITE_SPACE(tlcOutputsFcnOfS0B1)
+/* {S!d56}S-Function (esp32_target_setup): '<Root>/Waijung 2 Target Setup' */
+%<SLibCG_DumpSSCode("/*@[1565*/",tlcOutputsFcnOfS0B1,"/*@]*/")>\
+%endif
+%<SLibInsertSolverResetCode()>\
+%closefile cfgTxt
+%<cfgTxt>
+%<LibSetSystemField(system, "CachedOutputLocalVars", localVarDecl)>
+%endfunction
+%function OutputsFcnProtoType(block, system) Output
+%assign fcnProtoType = ""
+%openfile fcnProtoType
+static void Outputs(\
+%assign comma = ""
+%closefile fcnProtoType
+%<SLibCG_SetFcnProtoType(0, 0, fcnProtoType)>
+%endfunction

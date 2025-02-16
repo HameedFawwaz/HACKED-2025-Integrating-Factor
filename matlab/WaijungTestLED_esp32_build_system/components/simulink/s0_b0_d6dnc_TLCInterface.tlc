@@ -1,0 +1,32 @@
+%implements s0_b0_d6dnc_TLCInterface "C"
+
+%function getInputAddr_0_0_0_0_0_0_0(opaqueBlock, block, lcv, ucv, sigIdx, reim) void
+
+%return "&/*@<1656*//*@>1641*/WaijungTestLED_B./*@>165e*/PulseGenerator"
+%endfunction
+
+%function getInput_0_0_0_0_0_0_0(opaqueBlock, block, lcv, ucv, sigIdx, reim) void
+
+%return "/*@>1670*/WaijungTestLED_B./*@>168e*/PulseGenerator"
+%endfunction
+
+%function getInputAddr_0_0_0_2_0_0_0(opaqueBlock, block, lcv, ucv, sigIdx, reim) void
+
+%return "&/*@<16f2*//*@>16dd*/WaijungTestLED_B./*@>16fa*/PulseGenerator"
+%endfunction
+
+%function getInput_0_0_0_2_0_0_0(opaqueBlock, block, lcv, ucv, sigIdx, reim) void
+
+%return "/*@>170c*/WaijungTestLED_B./*@>172a*/PulseGenerator"
+%endfunction
+
+%function getInputAddr_0_0_0_2_1_0_0(opaqueBlock, block, lcv, ucv, sigIdx, reim) void
+
+%return "&/*@<1764*//*@>174f*/WaijungTestLED_B./*@>176c*/PulseGenerator"
+%endfunction
+
+%function getInput_0_0_0_2_1_0_0(opaqueBlock, block, lcv, ucv, sigIdx, reim) void
+
+%return "/*@>177e*/WaijungTestLED_B./*@>179c*/PulseGenerator"
+%endfunction
+

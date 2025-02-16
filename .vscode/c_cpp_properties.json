@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/.pio/libdeps/esp32-c3-devkitc-02/Adafruit MPU6050",
+                "C:/Users/athar/.platformio/packages/framework-arduinoespressif32/cores/esp32",
+                "C:/Users/athar/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32c3/include/freertos/include",
+                "C:/Users/athar/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
+                "C:/Users/athar/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32c3/include/freertos/include/esp_additions/freertos",
+                "C:/Users/athar/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32c3/qio_qspi/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.19041.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}
