@@ -59,6 +59,7 @@
 typedef struct {
     float acc_x, acc_y, acc_z;    // Acceleration in m/s²
     float gyro_x, gyro_y, gyro_z; // Angular velocity in rad/s
+    float pitch, roll;            // angles
 } IMUData;
 
 // Structure to hold position and velocity
@@ -80,10 +81,14 @@ typedef struct {
 MovingAverage* filter_x;
 MovingAverage* filter_y;
 MovingAverage* filter_z;
+MovingAverage* filter_pitch; 
+MovingAverage* filter_roll;
 MotionData motion = {0};
 unsigned long lastSampleTime = 0;
 unsigned long currentTime;
 unsigned long lastTime;
+float pitch = 0;
+float roll = 0;
 
 // Initialize moving average filter
 MovingAverage* createMovingAverage(int window_size) {
@@ -149,7 +154,7 @@ void initMPU6050() {
 //     return data;
 // }
 
-void readIMUData() {
+IMUData readIMUData() {
     IMUData data;
     int16_t ax, ay, az, gx, gy, gz;
     
@@ -169,9 +174,22 @@ void readIMUData() {
 // Process IMU data and update motion data
 void processIMUData(IMUData imu_data, MotionData* motion, 
                    MovingAverage* filter_x, MovingAverage* filter_y, 
-                   MovingAverage* filter_z) {
-    float dt = 1.0f / SAMPLE_RATE;
+                   MovingAverage* filter_z, float* pitch, float* roll) {
+
+    currentTime = millis();  // Get current time in milliseconds
+    float dt = (currentTime - lastTime) / 1000.0;  // Convert to seconds
+    lastTime = currentTime;
     
+    //getting pitch and roll values from accelerometer
+    float pitchAcc = atan2(imu_data.acc_x, sqrt(imu_data.acc_y * imu_data.acc_y + 
+                          imu_data.acc_z * imu_data.acc_z)) * 180/PI;
+    float rollAcc = atan2(imu_data.acc_y, sqrt(imu_data.acc_x * imu_data.acc_x + 
+                         imu_data.acc_z * imu_data.acc_z)) * 180/PI;
+
+    // Complementary filter for pitch and roll
+    *pitch = 0.96 * (*pitch + imu_data.gyro_x * dt) + 0.04 * pitchAcc;
+    *roll = 0.96 * (*roll + imu_data.gyro_y * dt) + 0.04 * rollAcc;
+
     // Apply moving average filter to acceleration data
     float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
     float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
@@ -188,36 +206,37 @@ void processIMUData(IMUData imu_data, MotionData* motion,
     motion->z = motion->vz * dt;
 }
 
-void processIMUData(IMUData imu_data, MotionData* motion, 
-                   MovingAverage* filter_x, MovingAverage* filter_y, 
-                   MovingAverage* filter_z) {
+// void processIMUData(IMUData imu_data, MotionData* motion, 
+//                    MovingAverage* filter_x, MovingAverage* filter_y, 
+//                    MovingAverage* filter_z) {
     
-    currentTime = millis();  // Get current time in milliseconds
-    float dt = (currentTime - lastTime) / 1000.0;  // Convert to seconds
-    lastTime = currentTime;
+//     currentTime = millis();  // Get current time in milliseconds
+//     float dt = (currentTime - lastTime) / 1000.0;  // Convert to seconds
+//     lastTime = currentTime;
 
-    // Apply moving average filter to acceleration data
-    float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
-    float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
-    float filtered_acc_z = updateMovingAverage(filter_z, imu_data.acc_z - G);
+//     // Apply moving average filter to acceleration data
+//     float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
+//     float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
+//     float filtered_acc_z = updateMovingAverage(filter_z, imu_data.acc_z - G);
 
-    // Update velocity using filtered acceleration
-    motion->vx += filtered_acc_x * dt;
-    motion->vy += filtered_acc_y * dt;
-    motion->vz += filtered_acc_z * dt;
+//     // Update velocity using filtered acceleration
+//     motion->vx += filtered_acc_x * dt;
+//     motion->vy += filtered_acc_y * dt;
+//     motion->vz += filtered_acc_z * dt;
 
-    // Update position using velocity
-    motion->x += motion->vx * dt;
-    motion->y += motion->vy * dt;
-    motion->z += motion->vz * dt;
-}
+//     // Update position using velocity
+//     motion->x += motion->vx * dt;
+//     motion->y += motion->vy * dt;
+//     motion->z += motion->vz * dt;
+// }
 
 void setup() {
     // Initialize Serial for debugging
     Serial.begin(115200);
     
     // Initialize I2C
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin(I2C_SDA);
+    Wire.begin(I2C_SCL);
     Wire.setClock(400000); // Set I2C clock to 400kHz
     
     // Initialize MPU6050
@@ -228,6 +247,8 @@ void setup() {
     filter_x = createMovingAverage(WINDOW_SIZE);
     filter_y = createMovingAverage(WINDOW_SIZE);
     filter_z = createMovingAverage(WINDOW_SIZE);
+    filter_pitch = createMovingAverage(WINDOW_SIZE);
+    filter_roll = createMovingAverage(WINDOW_SIZE);
     
     // Initialize timing
     lastSampleTime = millis();
