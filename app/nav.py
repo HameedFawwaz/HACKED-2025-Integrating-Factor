@@ -4,6 +4,7 @@ import numpy as np
 class Data:
     def __init__(self):
         self.data = {"acc": [], "vel": [], "pos": [], "omega": [], "theta": []}
+        
 
     
     def update_data(self, acc: tuple, vel: tuple, pos: tuple, w: tuple, theta: tuple):
@@ -16,6 +17,6 @@ class Data:
     def compute(self, data):
         data = data.split(",")
         data = list(map(int, data))
-        
+
 
 

@@ -1,7 +1,6 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
-
 Adafruit_MPU6050 mpu;
 
 #define MPU6050_ADDR            0x68    // MPU6050 device address
@@ -16,28 +15,6 @@ Adafruit_MPU6050 mpu;
 // // I2C pins for ESP32 -- need this?
  #define I2C_SDA 21
  #define I2C_SCL 22
-
-// Structure to hold IMU data
-typedef struct {
-    float acc_x, acc_y, acc_z;    // Acceleration in m/s²
-    float gyro_x, gyro_y, gyro_z; // Angular velocity in rad/s
-} IMUData;
-
-// Structure to hold position and velocity
-typedef struct {
-    float x, y, z;         // Position in meters
-    float vx, vy, vz;      // Velocity in m/s
-} MotionData;
-
-// Circular buffer for moving average
-typedef struct {
-    float* values;
-    int size;
-    int index;
-    int count;
-    float sum;
-} MovingAverage;
-
 
 
 void setup(void) {
@@ -115,6 +92,26 @@ delay(100);
 }
 
 
+// Structure to hold IMU data
+typedef struct {
+    float acc_x, acc_y, acc_z;    // Acceleration in m/s²
+    float gyro_x, gyro_y, gyro_z; // Angular velocity in rad/s
+} IMUData;
+
+// Structure to hold position and velocity
+typedef struct {
+    float x, y, z;         // Position in meters
+    float vx, vy, vz;      // Velocity in m/s
+} MotionData;
+
+// Circular buffer for moving average
+typedef struct {
+    float* values;
+    int size;
+    int index;
+    int count;
+    float sum;
+} MovingAverage;
 
 
 
@@ -161,13 +158,7 @@ void initMPU6050() {
 }
 
 
-void readIMUData() {
-      IMUData data;
-      int16_t ax, ay, az, gx, gy, gz;
-      
-      sensors_event_t a, g, temp;
-      data = mpu.getEvent(%a, &g, &temp);
-
+void readIMUData(IMUData data) {
     ax = a.acceleration.x
     ay = a.acceleration.y
     az = a.acceleration.z
@@ -228,42 +219,20 @@ if (currentTime - lastSampleTime >= (1000 / SAMPLE_RATE)) {
         // Read IMU data
 
         sensors_event_t a, g, temp;
-        data = readIMUdata();
+        data = readIMUdata(mpu.getEvent(&a, &g, &temp));
         IMUData imu_data = readIMUData(); 
         
         // Process data
         processIMUData(imu_data, &motion, filter_x, filter_y, filter_z);
         
         // Print results
-
-        Serial.printf("Position: (%.2f, %.2f, %.2f) m\n", motion.x, motion.y, motion.z);
-        Serial.printf("Velocity: (%.2f, %.2f, %.2f) m/s\n", motion.vx, motion.vy, motion.vz);
-
+        Serial.printf("Position: (%.2f, %.2f, %.2f) m\n", 
+                     motion.x, motion.y, motion.z);
+        Serial.printf("Velocity: (%.2f, %.2f, %.2f) m/s\n", 
+                     motion.vx, motion.vy, motion.vz);
         
         // Update timing
         lastSampleTime = currentTime;
     }
-
-
-
-/* Print out the values */
-Serial.print("Acceleration X: ");
-Serial.print(a.acceleration.x);
-Serial.print(", Y: ");
-Serial.print(a.acceleration.y);
-Serial.print(", Z: ");
-Serial.print(a.acceleration.z);
-Serial.println(" m/s^2");
-Serial.print("Rotation X: ");
-Serial.print(g.gyro.x);
-Serial.print(", Y: ");
-Serial.print(g.gyro.y);
-Serial.print(", Z: ");
-Serial.print(g.gyro.z);
-Serial.println(" rad/s");
-Serial.print("Temperature: ");
-Serial.print(temp.temperature);
-Serial.println(" degC");
-Serial.println("");
-delay(500);
 }
+    

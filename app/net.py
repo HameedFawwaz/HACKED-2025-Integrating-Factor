@@ -10,5 +10,5 @@ print(f"Listening for UDP packets on port {UDP_PORT}...")
 
 while True:
     data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
-    print(f"Received message: {data.decode()} from {addr}")
+    print(data.decode().split(","))
 

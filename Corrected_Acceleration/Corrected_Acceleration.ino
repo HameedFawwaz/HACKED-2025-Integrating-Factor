@@ -1,47 +1,8 @@
-
-
-// void loop() {
-//     // 1. Read raw data
-//     int16_t ax, ay, az, gx, gy, gz;
-//     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-//     //scaling 16bit values to meaningful values
-//     float AccX = ax / 16384.0;  // max is ±2g
-//     float AccY = ay / 16384.0;
-//     float AccZ = az / 16384.0;
-//     float GyroX = gx / 131.0;   // max is ±250 deg/s
-//     float GyroY = gy / 131.0;
-//     float GyroZ = gz / 131.0;
-
-//     // 2. Calculate pitch/roll from Acc
-//     float rollAcc  = atan2(AccY, AccZ) * 180 / PI;
-//     float pitchAcc = atan2(-AccX, sqrt(AccY*AccY + AccZ*AccZ)) * 180 / PI;
-
-//     // 3. Integrate Gyro to get pitch/roll rates
-//     unsigned long currentTime = millis();
-//     float dt = (currentTime - lastTime) / 1000.0f;
-//     lastTime = currentTime;
-
-//     // Integrate gyro (gyroscope = degrees per second)
-//     pitch += GyroX * dt;
-//     roll  += GyroY * dt;
-
-//     // 4. Complementary filter
-//     float alpha = 0.98f;
-//     pitch = alpha * pitch + (1.0f - alpha) * pitchAcc;
-//     roll  = alpha * roll  + (1.0f - alpha) * rollAcc;
-
-//     Serial.print("Pitch: "); Serial.print(pitch);
-//     Serial.print("  Roll: "); Serial.println(roll);
-
-//     delay(10);
-// }
-
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
-
-
+#include <WiFi.h>
+#include <WiFiUdp.h>
 
 
 // // MPU6050 Configuration --- need this?
@@ -59,6 +20,7 @@
 #define I2C_SCL 02 // 22 for Arduino, 02 for ESP32
 
 
+
 Adafruit_MPU6050 mpu;
 
 // Structure to hold IMU data
@@ -73,11 +35,22 @@ typedef struct {
     float vx, vy, vz;      // Velocity in m/s
 } MotionData;
 
+//IMU data init
+
 IMUData data;
 MotionData motion;
 unsigned long lastSampleTime = 0;
 unsigned long currentTime;
 unsigned long lastTime;
+
+//UDP Init
+
+const char* ssid = "Fawwaz's Pixel";  // Replace with your WiFi SSID
+const char* password = "12345678";  // Replace with your WiFi password
+
+WiFiUDP udp;
+const char* remoteIP = "10.152.142.22";  // Replace with your computer's local IP
+const int remotePort = 80;  // Port to send data to
 
 
 // Initialize MPU6050 ---need this??
@@ -121,7 +94,7 @@ void initMPU6050() {
 
 IMUData readIMUData() {
       //IMUData data;
-      int16_t ax, ay, az, gx, gy, gz;
+      float ax, ay, az, gx, gy, gz, offset_x, offset_y, offset_z;
       
       sensors_event_t a, g, temp;
       mpu.getEvent(&a, &g, &temp);
@@ -134,18 +107,22 @@ IMUData readIMUData() {
       gy = g.gyro.y;
       gz = g.gyro.z;
 
+      offset_x = -0.9;
+      offset_y = 0.18;
+      offset_z = 1.56;
+      
 
       
       // // Convert to meaningful values
       //  data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
       //  data.acc_y = ay / 16384.0 * G;
-      //  data.acc_z = az / 16384.0 * G;
-       data.acc_x = ax;  // Convert to m/s²
-       data.acc_y = ay;
-       data.acc_z = az;
-       data.gyro_x = gx / 131.0;   // In degrees/second
-       data.gyro_y = gy / 131.0;
-       data.gyro_z = gz / 131.0;
+      //  data.acc_z = az / 16384.0 * +G;
+       data.acc_x = (a.acceleration.x + offset_x);  // Convert to m/s²
+       data.acc_y = (a.acceleration.y + offset_y);
+       data.acc_z = (a.acceleration.z + offset_z - 9.81);
+       data.gyro_x = g.gyro.x / 131.0;   // In degrees/second
+       data.gyro_y = g.gyro.y / 131.0;
+       data.gyro_z = g.gyro.z / 131.0;
 
       return data;
   }
@@ -179,7 +156,7 @@ void processIMUData(IMUData imu_data, MotionData* motion) {
     lastTime = currentTime;
 
 
-    // Update velocity using filtered acceleration
+    // Update velocity using acceleration
     motion->vx += imu_data.acc_x * dt;
     motion->vy += imu_data.acc_y * dt;
     motion->vz += imu_data.acc_z * dt;
@@ -192,6 +169,13 @@ void processIMUData(IMUData imu_data, MotionData* motion) {
 
 void setup() {
     Serial.begin(115200);
+    WiFi.begin(ssid, password);
+    
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+    }
+
+
     Wire.begin(I2C_SDA, I2C_SCL);
     Wire.setClock(100000);
 
@@ -222,34 +206,34 @@ void loop() {
         // Read IMU data
         IMUData imu_data = readIMUData(); 
         
+        
+        
 
         // Process data
         processIMUData(imu_data, &motion);
         
-        // Serial.print("Position: (");
-        // Serial.print(motion.x, 2);
-        // Serial.print(", ");
-        // Serial.print(motion.y, 2);
-        // Serial.print(", ");
-        // Serial.print(motion.z, 2);
-        // Serial.println(") m");
+        udp.beginPacket(remoteIP, remotePort);
+         udp.print(motion.x);
+         udp.print(",");
+         udp.print(motion.y);
+         udp.print(",");
+         udp.print(motion.z);
+         udp.print(",");
 
-        // Serial.print("Velocity: (");
-        // Serial.print(motion.vx, 2);
-        // Serial.print(", ");
-        // Serial.print(motion.vy, 2);
-        // Serial.print(", ");
-        // Serial.print(motion.vz, 2);
-        // Serial.println(") m/s");
+         udp.print(motion.vx);
+         udp.print(",");
+         udp.print(motion.vy);
+         udp.print(",");
+         udp.print(motion.vz);
+         udp.print(",");
 
+        udp.print(data.acc_x);
+        udp.print(",");
+        udp.print(data.acc_y);
+        udp.print(",");
+        udp.print(data.acc_z);
 
-        Serial.print("Acc: (");
-        Serial.print(data.acc_x, 2);
-        Serial.print(", ");
-        Serial.print(data.acc_y, 2);
-        Serial.print(", ");
-        Serial.print(data.acc_z, 2);
-        Serial.println(") m/s^2");
+        udp.endPacket();
 
         // Update timing
         lastSampleTime = currentTime;
