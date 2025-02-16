@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
-
+#include <math.h>
 
 // // MPU6050 Configuration --- need this?
 #define MPU6050_ADDR            0x68    // MPU6050 device address
@@ -27,6 +27,7 @@ Adafruit_MPU6050 mpu;
 typedef struct {
     float acc_x, acc_y, acc_z;    // Acceleration in m/s²
     float gyro_x, gyro_y, gyro_z; // Angular velocity in rad/s
+    float dt;                     // delta time (to be sent to python script)
 } IMUData;
 
 // Structure to hold position and velocity
@@ -99,16 +100,16 @@ IMUData readIMUData() {
       sensors_event_t a, g, temp;
       mpu.getEvent(&a, &g, &temp);
 
-      ax = a.acceleration.x;
-      ay = a.acceleration.y;
-      az = a.acceleration.z;
+      ax = round(a.acceleration.x * 10) / 10;
+      ay = round(a.acceleration.y * 10) / 10;
+      az = round(a.acceleration.z * 10) / 10;
 
       gx = g.gyro.x;
       gy = g.gyro.y;
       gz = g.gyro.z;
 
-      offset_x = -0.9;
-      offset_y = 0.18;
+      offset_x = -0.75;
+      offset_y = 0.06;
       offset_z = 1.56;
       
 
@@ -117,9 +118,9 @@ IMUData readIMUData() {
       //  data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
       //  data.acc_y = ay / 16384.0 * G;
       //  data.acc_z = az / 16384.0 * +G;
-       data.acc_x = (a.acceleration.x + offset_x);  // Convert to m/s²
-       data.acc_y = (a.acceleration.y + offset_y);
-       data.acc_z = (a.acceleration.z + offset_z - 9.81);
+       data.acc_x = round(a.acceleration.x + offset_x);  // Convert to m/s²
+       data.acc_y = round(a.acceleration.y + offset_y);
+       data.acc_z = round(a.acceleration.z + offset_z - 9.81);
        data.gyro_x = g.gyro.x / 131.0;   // In degrees/second
        data.gyro_y = g.gyro.y / 131.0;
        data.gyro_z = g.gyro.z / 131.0;
@@ -157,14 +158,16 @@ void processIMUData(IMUData imu_data, MotionData* motion) {
 
 
     // Update velocity using acceleration
-    motion->vx += imu_data.acc_x * dt;
-    motion->vy += imu_data.acc_y * dt;
-    motion->vz += imu_data.acc_z * dt;
+    motion->vx += round(imu_data.acc_x * dt * 10) / 10;
+    motion->vy += round(imu_data.acc_y * dt * 10) / 10;
+    motion->vz += round(imu_data.acc_y * dt * 10) / 10;
 
     // Update position using velocity
     motion->x += motion->vx * dt;
     motion->y += motion->vy * dt;
     motion->z += motion->vz * dt;
+
+    data.dt = dt;
 }
 
 void setup() {
@@ -232,6 +235,17 @@ void loop() {
         udp.print(data.acc_y);
         udp.print(",");
         udp.print(data.acc_z);
+        udp.print(",");
+
+        udp.print(data.gyro_x);
+        udp.print(",");
+        udp.print(data.gyro_y);
+        udp.print(",");
+        udp.print(data.gyro_z);
+        udp.print(",");
+
+
+        udp.print(data.dt);
 
         udp.endPacket();
 

@@ -6,11 +6,14 @@ import socket
 import serial
 import nav
 
+import time
+import kalman
+
 # Initialize pygame
 pygame.init()
 
 
-arduino = serial.Serial(port="COM5", baudrate=9600, timeout=0.1)
+#arduino = serial.Serial(port="COM5", baudrate=9600, timeout=0.1)
 
 
 # Constants
@@ -87,12 +90,33 @@ def read_imu(imu):
 
 i = 0
 
+#Constants for Kalman Filter
+
+process_noise = 0.001
+measurement_noise = 0.01
+error_covariance = 1.0
+
 # Main loop
 while running:
 
-    data = str(arduino.readline().decode("utf-8"))
-    data = dat.compute(data)
 
+    #data = str(arduino.readline().decode("utf-8"))
+    data, _ = sock.recvfrom(1024).decode().split(",")
+    data = dat.compute(data)
+    data = list(map(int, data))
+
+    dt = data[-1]
+    acc_data = [data[8], data[9], data[10]]
+    gyro_data = [data[11], data[12], data[13]]
+    
+    
+
+    kalman = kalman.KalmanFilterIMU(dt, process_noise=process_noise, measurement_noise=measurement_noise, error_covariance=error_covariance)
+
+    kalman.predict()
+
+
+    print(time.time())
 
 
     #data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
