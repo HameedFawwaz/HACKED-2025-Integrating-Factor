@@ -37,14 +37,17 @@
 //     delay(10);
 // }
 
-
-
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
 #include <Wire.h>
 
+
+
+
 // // MPU6050 Configuration --- need this?
-// #define MPU6050_ADDR            0x68    // MPU6050 device address
-// #define MPU6050_ACCEL_XOUT_H    0x3B
-// #define MPU6050_PWR_MGMT_1      0x6B
+#define MPU6050_ADDR            0x68    // MPU6050 device address
+ #define MPU6050_ACCEL_XOUT_H    0x3B
+ #define MPU6050_PWR_MGMT_1      0x6B
 
 // Processing Configuration
 #define WINDOW_SIZE     10      // Size of moving average window
@@ -52,8 +55,11 @@
 #define G               9.81    // Gravity constant
 
 // // I2C pins for ESP32 -- need this?
-// #define I2C_SDA 21
-// #define I2C_SCL 22
+#define I2C_SDA 21
+#define I2C_SCL 22
+
+
+Adafruit_MPU6050 mpu;
 
 // Structure to hold IMU data
 typedef struct {
@@ -149,44 +155,55 @@ void initMPU6050() {
 //     return data;
 // }
 
-void readIMUData() {
-    IMUData data;
-    int16_t ax, ay, az, gx, gy, gz;
-    
-    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    
-    // Convert to meaningful values
-    data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
-    data.acc_y = ay / 16384.0 * G;
-    data.acc_z = az / 16384.0 * G;
-    data.gyro_x = gx / 131.0;   // In degrees/second
-    data.gyro_y = gy / 131.0;
-    data.gyro_z = gz / 131.0;
-    
-    return data;
-}
+IMUData readIMUData() {
+      IMUData data;
+      int16_t ax, ay, az, gx, gy, gz;
+      
+      sensors_event_t a, g, temp;
+      mpu.getEvent(&a, &g, &temp);
 
-// Process IMU data and update motion data
-void processIMUData(IMUData imu_data, MotionData* motion, 
-                   MovingAverage* filter_x, MovingAverage* filter_y, 
-                   MovingAverage* filter_z) {
-    float dt = 1.0f / SAMPLE_RATE;
+      ax = a.acceleration.x;
+      ay = a.acceleration.y;
+      az = a.acceleration.z;
+
+      gx = g.gyro.x;
+      gy = g.gyro.y;
+      gz = g.gyro.z;
+
+
+      
+      // // Convert to meaningful values
+       data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
+       data.acc_y = ay / 16384.0 * G;
+       data.acc_z = az / 16384.0 * G;
+       data.gyro_x = gx / 131.0;   // In degrees/second
+       data.gyro_y = gy / 131.0;
+       data.gyro_z = gz / 131.0;
+
+      return data;
+  }
+
+// // Process IMU data and update motion data
+// void processIMUData(IMUData imu_data, MotionData* motion, 
+//                    MovingAverage* filter_x, MovingAverage* filter_y, 
+//                    MovingAverage* filter_z) {
+//     float dt = 1.0f / SAMPLE_RATE;
     
-    // Apply moving average filter to acceleration data
-    float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
-    float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
-    float filtered_acc_z = updateMovingAverage(filter_z, imu_data.acc_z - G);
+//     // Apply moving average filter to acceleration data
+//     float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
+//     float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
+//     float filtered_acc_z = updateMovingAverage(filter_z, imu_data.acc_z - G);
 
-    // Update velocity using filtered acceleration
-    motion->vx = filtered_acc_x * dt;
-    motion->vy = filtered_acc_y * dt;
-    motion->vz = filtered_acc_z * dt;
+//     // Update velocity using filtered acceleration
+//     motion->vx = filtered_acc_x * dt;
+//     motion->vy = filtered_acc_y * dt;
+//     motion->vz = filtered_acc_z * dt;
 
-    // Update position using velocity
-    motion->x = motion->vx * dt;
-    motion->y = motion->vy * dt;
-    motion->z = motion->vz * dt;
-}
+//     // Update position using velocity
+//     motion->x = motion->vx * dt;
+//     motion->y = motion->vy * dt;
+//     motion->z = motion->vz * dt;
+// }
 
 void processIMUData(IMUData imu_data, MotionData* motion, 
                    MovingAverage* filter_x, MovingAverage* filter_y, 
@@ -213,11 +230,14 @@ void processIMUData(IMUData imu_data, MotionData* motion,
 }
 
 void setup() {
+
+  
     // Initialize Serial for debugging
     Serial.begin(115200);
     
     // Initialize I2C
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin(I2C_SDA);
+    Wire.begin(I2C_SCL);
     Wire.setClock(400000); // Set I2C clock to 400kHz
     
     // Initialize MPU6050
@@ -244,12 +264,22 @@ void loop() {
         // Process data
         processIMUData(imu_data, &motion, filter_x, filter_y, filter_z);
         
-        // Print results
-        Serial.printf("Position: (%.2f, %.2f, %.2f) m\n", 
-                     motion.x, motion.y, motion.z);
-        Serial.printf("Velocity: (%.2f, %.2f, %.2f) m/s\n", 
-                     motion.vx, motion.vy, motion.vz);
-        
+        Serial.print("Position: (");
+        Serial.print(motion.x, 2);
+        Serial.print(", ");
+        Serial.print(motion.y, 2);
+        Serial.print(", ");
+        Serial.print(motion.z, 2);
+        Serial.println(") m");
+
+        Serial.print("Velocity: (");
+        Serial.print(motion.vx, 2);
+        Serial.print(", ");
+        Serial.print(motion.vy, 2);
+        Serial.print(", ");
+        Serial.print(motion.vz, 2);
+        Serial.println(") m/s");
+
         // Update timing
         lastSampleTime = currentTime;
     }
