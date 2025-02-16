@@ -51,12 +51,12 @@
 
 // Processing Configuration
 #define WINDOW_SIZE     10      // Size of moving average window
-#define SAMPLE_RATE     100     // Sample rate in Hz
+#define SAMPLE_RATE     50     // Sample rate in Hz
 #define G               9.81    // Gravity constant
 
 // // I2C pins for ESP32 -- need this?
-#define I2C_SDA 21
-#define I2C_SCL 22
+#define I2C_SDA 01 // 21 for Arduino, 01 for ESP32
+#define I2C_SCL 02 // 22 for Arduino, 02 for ESP32
 
 
 Adafruit_MPU6050 mpu;
@@ -73,48 +73,12 @@ typedef struct {
     float vx, vy, vz;      // Velocity in m/s
 } MotionData;
 
-// Circular buffer for moving average
-typedef struct {
-    float* values;
-    int size;
-    int index;
-    int count;
-    float sum;
-} MovingAverage;
-
-// Global variables
-MovingAverage* filter_x;
-MovingAverage* filter_y;
-MovingAverage* filter_z;
-MotionData motion = {0};
+IMUData data;
+MotionData motion;
 unsigned long lastSampleTime = 0;
 unsigned long currentTime;
 unsigned long lastTime;
 
-// Initialize moving average filter
-MovingAverage* createMovingAverage(int window_size) {
-    MovingAverage* filter = (MovingAverage*)malloc(sizeof(MovingAverage));
-    filter->values = (float*)calloc(window_size, sizeof(float));
-    filter->size = window_size;
-    filter->index = 0;
-    filter->count = 0;
-    filter->sum = 0.0f;
-    return filter;
-}
-
-// Add value to moving average
-float updateMovingAverage(MovingAverage* filter, float new_value) {
-    if (filter->count == filter->size) {
-        filter->sum -= filter->values[filter->index];
-    }
-    filter->values[filter->index] = new_value;
-    filter->sum += new_value;
-    
-    if (filter->count < filter->size) filter->count++;
-    filter->index = (filter->index + 1) % filter->size;
-    
-    return filter->sum / filter->count;
-}
 
 // Initialize MPU6050 ---need this??
 void initMPU6050() {
@@ -156,7 +120,7 @@ void initMPU6050() {
 // }
 
 IMUData readIMUData() {
-      IMUData data;
+      //IMUData data;
       int16_t ax, ay, az, gx, gy, gz;
       
       sensors_event_t a, g, temp;
@@ -173,9 +137,12 @@ IMUData readIMUData() {
 
       
       // // Convert to meaningful values
-       data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
-       data.acc_y = ay / 16384.0 * G;
-       data.acc_z = az / 16384.0 * G;
+      //  data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
+      //  data.acc_y = ay / 16384.0 * G;
+      //  data.acc_z = az / 16384.0 * G;
+       data.acc_x = ax;  // Convert to m/s²
+       data.acc_y = ay;
+       data.acc_z = az;
        data.gyro_x = gx / 131.0;   // In degrees/second
        data.gyro_y = gy / 131.0;
        data.gyro_z = gz / 131.0;
@@ -205,23 +172,17 @@ IMUData readIMUData() {
 //     motion->z = motion->vz * dt;
 // }
 
-void processIMUData(IMUData imu_data, MotionData* motion, 
-                   MovingAverage* filter_x, MovingAverage* filter_y, 
-                   MovingAverage* filter_z) {
+void processIMUData(IMUData imu_data, MotionData* motion) {
     
     currentTime = millis();  // Get current time in milliseconds
     float dt = (currentTime - lastTime) / 1000.0;  // Convert to seconds
     lastTime = currentTime;
 
-    // Apply moving average filter to acceleration data
-    float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
-    float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
-    float filtered_acc_z = updateMovingAverage(filter_z, imu_data.acc_z - G);
 
     // Update velocity using filtered acceleration
-    motion->vx += filtered_acc_x * dt;
-    motion->vy += filtered_acc_y * dt;
-    motion->vz += filtered_acc_z * dt;
+    motion->vx += imu_data.acc_x * dt;
+    motion->vy += imu_data.acc_y * dt;
+    motion->vz += imu_data.acc_z * dt;
 
     // Update position using velocity
     motion->x += motion->vx * dt;
@@ -230,27 +191,27 @@ void processIMUData(IMUData imu_data, MotionData* motion,
 }
 
 void setup() {
-
-  
-    // Initialize Serial for debugging
     Serial.begin(115200);
-    
-    // Initialize I2C
-    Wire.begin(I2C_SDA);
-    Wire.begin(I2C_SCL);
-    Wire.setClock(400000); // Set I2C clock to 400kHz
-    
-    // Initialize MPU6050
-    initMPU6050();
-    Serial.println("MPU6050 initialized");
-    
-    // Create moving average filters
-    filter_x = createMovingAverage(WINDOW_SIZE);
-    filter_y = createMovingAverage(WINDOW_SIZE);
-    filter_z = createMovingAverage(WINDOW_SIZE);
-    
-    // Initialize timing
+    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.setClock(100000);
+
+    // Initialize MPU6050 and check if it was successful
+    if (!mpu.begin()) {
+        Serial.println("Failed to find MPU6050 chip!");
+        while (1) {
+            delay(1000); // Halt execution if MPU6050 is not found
+        }
+    }
+
+    // Configure MPU6050 settings
+    mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+    mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+    Serial.println("MPU6050 initialized successfully");
+
     lastSampleTime = millis();
+    lastTime = millis();
 }
 
 void loop() {
@@ -261,24 +222,34 @@ void loop() {
         // Read IMU data
         IMUData imu_data = readIMUData(); 
         
-        // Process data
-        processIMUData(imu_data, &motion, filter_x, filter_y, filter_z);
-        
-        Serial.print("Position: (");
-        Serial.print(motion.x, 2);
-        Serial.print(", ");
-        Serial.print(motion.y, 2);
-        Serial.print(", ");
-        Serial.print(motion.z, 2);
-        Serial.println(") m");
 
-        Serial.print("Velocity: (");
-        Serial.print(motion.vx, 2);
+        // Process data
+        processIMUData(imu_data, &motion);
+        
+        // Serial.print("Position: (");
+        // Serial.print(motion.x, 2);
+        // Serial.print(", ");
+        // Serial.print(motion.y, 2);
+        // Serial.print(", ");
+        // Serial.print(motion.z, 2);
+        // Serial.println(") m");
+
+        // Serial.print("Velocity: (");
+        // Serial.print(motion.vx, 2);
+        // Serial.print(", ");
+        // Serial.print(motion.vy, 2);
+        // Serial.print(", ");
+        // Serial.print(motion.vz, 2);
+        // Serial.println(") m/s");
+
+
+        Serial.print("Acc: (");
+        Serial.print(data.acc_x, 2);
         Serial.print(", ");
-        Serial.print(motion.vy, 2);
+        Serial.print(data.acc_y, 2);
         Serial.print(", ");
-        Serial.print(motion.vz, 2);
-        Serial.println(") m/s");
+        Serial.print(data.acc_z, 2);
+        Serial.println(") m/s^2");
 
         // Update timing
         lastSampleTime = currentTime;

@@ -3,10 +3,15 @@ import math
 import random
 import socket
 
+import serial
 import nav
 
 # Initialize pygame
 pygame.init()
+
+
+arduino = serial.Serial(port="COM5", baudrate=9600, timeout=0.1)
+
 
 # Constants
 WIDTH, HEIGHT = 600, 600
@@ -85,12 +90,18 @@ i = 0
 # Main loop
 while running:
 
-    data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
-    data = data.decode()
+    data = str(arduino.readline().decode("utf-8"))
+    data = dat.compute(data)
 
-    print(f"Received message: {data.decode()} from {addr}")
+
+
+    #data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
+    #data = data.decode()
+
+    #print(f"Received message: {data.decode()} from {addr}")
 
     points = dat.data["pos"]
+
     # Extract points and convert NumPy arrays to tuples
     points = [tuple(p) for p in dat.data["pos"]]
 

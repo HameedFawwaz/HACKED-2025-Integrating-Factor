@@ -13,6 +13,9 @@ class Data:
         self.data["theta"].append(theta)
         self.data["omega"].append(w)
         
-
+    def compute(self, data):
+        data = data.split(",")
+        data = list(map(int, data))
+        
 
 
