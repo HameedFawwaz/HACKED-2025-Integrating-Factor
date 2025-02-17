@@ -2,6 +2,8 @@ import socket
 
 import kalman
 
+import time
+
 UDP_IP = ""  # Listen on all available network interfaces
 UDP_PORT = 80  # Same as the ESP32 sender port
 
@@ -14,16 +16,22 @@ process_noise = 0.001
 measurement_noise = 0.01
 error_covariance = 1.0
 
-"""
-while True:
-    
-    data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
-    print(data.decode().split(","))
-    """
 
 while True:
     
     data, _ = sock.recvfrom(1024)
+    data = data.decode().split(",")
+    
+    data = list(map(float, data))
+
+    print(data[:9])
+    
+    #time.sleep(0.01)
+
+"""
+while True:
+    
+    data, _ = sock.recvfrom(1024)   
     data = data.decode().split(",")
     
     data = list(map(float, data))
@@ -42,6 +50,4 @@ while True:
     print(kf.get_filtered_acceleration())
 
 
-
-
-
+"""

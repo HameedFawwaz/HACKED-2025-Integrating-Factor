@@ -38,21 +38,7 @@ print(f"Listening for UDP packets on port {UDP_PORT}...")
 #Create Sample Data
 
 dat = nav.Data()
-
-# Generate test cases
-test_cases = [
-    (0, 0, 100, 100, 200, 200, 300, 300, 300, 10, 20, 30, 50, 50, 50),
-    (100, 100, 100, 100, 100, 100, 200, 200, 200, 50, 50, 50, 100, 100, 100),
-    (200, 300, 400, 0, 0, 0, 500, 500, 500, 120, 150, 180, 150, 120, 80),
-    (-100, -200, -300, 300, 200, 100, 600, 600, 600, -20, -40, -60, -50, -30, -20),
-    (400, 300, 200, 100, 100, 100, 800, 900, 700, 250, 310, 180, 200, 180, 150),
-]
-
-
-# Call update_data with each test case
-for case in test_cases:
-    dat.update_data(*case)
-    
+ 
 # Create screen
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Circular GPS Display")
@@ -66,8 +52,8 @@ scale_factor = 1.0  # Zoom factor
 # Function to rotate a point around the center
 def rotate_point(x, y, angle, scale):
     angle_rad = math.radians(angle)
-    x = CENTER[0] - x
-    y = CENTER[1] - y
+    x = CENTER[0] - float(x)
+    y = CENTER[1] - float(y)
 
     x *= scale
     y *= scale
@@ -75,10 +61,8 @@ def rotate_point(x, y, angle, scale):
     x_new = (x * math.cos(angle_rad) - y * math.sin(angle_rad))
     y_new = (x * math.sin(angle_rad) + y * math.cos(angle_rad))
     return int(x_new + CENTER[0]), int(y_new + CENTER[1])
-
-def read_imu(imu):
-    data = imu.split(", ")
-
+"""
+def read_imu(data):
     acc = (data[0], data[1], data[2])
     vel = (data[3], data[4], data[5])
     pos = (data[6], data[7], data[8])
@@ -86,8 +70,10 @@ def read_imu(imu):
     w = (data[9], data[10], data[11])
     theta = (data[12], data[13], data[14])
 
-    dat.update_data(acc, vel, pos, w, theta)
 
+
+    dat.update_data(acc, vel, pos, w, theta)
+"""
 i = 0
 
 #Constants for Kalman Filter
@@ -99,41 +85,33 @@ error_covariance = 1.0
 # Main loop
 while running:
 
-
-    #data = str(arduino.readline().decode("utf-8"))
-    data, _ = sock.recvfrom(1024).decode().split(",")
-    data = dat.compute(data)
-    data = list(map(int, data))
-
-    dt = data[-1]
-    acc_data = [data[8], data[9], data[10]]
-    gyro_data = [data[11], data[12], data[13]]
-    
-    
-
-    kalman = kalman.KalmanFilterIMU(dt, process_noise=process_noise, measurement_noise=measurement_noise, error_covariance=error_covariance)
-
-    kalman.predict()
-
-
-    print(time.time())
-
-
-    #data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
-    #data = data.decode()
-
-    #print(f"Received message: {data.decode()} from {addr}")
-
-    points = dat.data["pos"]
-
-    # Extract points and convert NumPy arrays to tuples
-    points = [tuple(p) for p in dat.data["pos"]]
+    i += 1
 
     screen.fill(WHITE)
     
     # Draw circular boundary
     pygame.draw.circle(screen, BLACK, CENTER, RADIUS, 3)
+
+    data, _ = sock.recvfrom(1024)
+    data = data.decode("utf-8").split(",")
+    data = list(map(float, data))
+    print(data)
+
+
+    dt = data[12]
+    acc_data = [data[6], data[7], data[8]]
+    gyro_data = [data[9], data[10], data[11]]
+    pos_data = (data[0], data[1], data[2])
+    vel_data = [data[3], data[4], data[5]]
     
+
+    dat.data["pos"].append(pos_data)
+    points = dat.data["pos"]
+
+    # Extract points and convert NumPy arrays to tuples
+    points = [list(p) for p in dat.data["pos"]]
+
+
     # Event handling
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -167,6 +145,5 @@ while running:
 
             prev_point = (rotated_x, rotated_y)  # Store current point as previous
     pygame.display.flip()
-    pygame.time.delay(50)  # Delay for smooth rotation
 
 pygame.quit()
