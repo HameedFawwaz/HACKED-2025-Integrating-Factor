@@ -42,7 +42,7 @@ dat = nav.Data()
  
 # Create screen
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Circular GPS Display")
+pygame.display.set_caption("F.E.I.N")
 
 # Variables
 running = True
@@ -52,6 +52,68 @@ scale_factor = 1.0  # Zoom factor
 pan_x, pan_y = 0, 0
 panning = False
 mouse_start = (0, 0)
+
+# Font for title and labels
+font = pygame.font.Font(None, 36)
+import pygame
+import math
+
+# Initialize pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 600, 600
+CENTER = (WIDTH // 2, HEIGHT // 2)
+RADIUS = 250  # Radius of the circular display
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+# Create screen
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("F.E.I.N")
+
+# Font for labels
+font = pygame.font.Font(None, 36)
+
+# Function to draw dotted lines stopping at the circle
+def draw_dotted_line(color, start_pos, end_pos, dash_length=5):
+    x1, y1 = start_pos
+    x2, y2 = end_pos
+    dx, dy = x2 - x1, y2 - y1
+    dist = math.hypot(dx, dy)
+    dashes = int(dist // (2 * dash_length))
+
+    for i in range(dashes):
+        start_x = x1 + (dx / dashes) * i * 2
+        start_y = y1 + (dy / dashes) * i * 2
+        end_x = start_x + (dx / dashes)
+        end_y = start_y + (dy / dashes)
+        pygame.draw.line(screen, color, (start_x, start_y), (end_x, end_y), 2)
+
+# Function to draw axes with arrowheads
+def draw_axes():
+    # Find precise points where axes intersect the circle
+    x_edge = int(math.sqrt(RADIUS ** 2))  # Intersection of X-axis (y=0)
+    y_edge = int(math.sqrt(RADIUS ** 2))  # Intersection of Y-axis (x=0)
+
+    # X-axis (dotted line from left to right edge)
+    draw_dotted_line(BLACK, (CENTER[0] - x_edge, CENTER[1]), (CENTER[0] + x_edge - 250, CENTER[1]))
+
+    # Y-axis (dotted line from bottom to top edge)
+    draw_dotted_line(BLACK, (CENTER[0], CENTER[1] + y_edge), (CENTER[0], CENTER[1] - y_edge + 250))
+
+    # Draw arrowheads
+    pygame.draw.polygon(screen, BLACK, [(CENTER[0] + x_edge, CENTER[1]), (CENTER[0] + x_edge - 10, CENTER[1] - 5), (CENTER[0] + x_edge - 10, CENTER[1] + 5)])  # X arrow
+    pygame.draw.polygon(screen, BLACK, [(CENTER[0], CENTER[1] - y_edge), (CENTER[0] - 5, CENTER[1] - y_edge + 10), (CENTER[0] + 5, CENTER[1] - y_edge + 10)])  # Y arrow
+
+    # Labels
+    x_label = font.render("X", True, BLACK)
+    y_label = font.render("Y", True, BLACK)
+    screen.blit(x_label, (CENTER[0] + x_edge - 15, CENTER[1] + 5))
+    screen.blit(y_label, (CENTER[0] + 5, CENTER[1] - y_edge + 5))
+
 
 # Function to rotate a point around the center
 def rotate_point(x, y, angle, scale):
@@ -73,6 +135,10 @@ while running:
     
     # Draw circular boundary
     pygame.draw.circle(screen, BLACK, CENTER, RADIUS, 3)
+
+    title_text = font.render("F.E.I.N", True, BLACK)
+    screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 10))
+    draw_axes()
 
     data, _ = sock.recvfrom(1024)
     data = data.decode("utf-8")
