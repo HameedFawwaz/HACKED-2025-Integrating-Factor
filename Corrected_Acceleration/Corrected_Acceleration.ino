@@ -16,16 +16,17 @@
 #define G               9.81    // Gravity constant
 
 // // I2C pins for ESP32 -- need this?
-#define I2C_SDA 05 // 21 for Arduino, 01 for ESP32
-#define I2C_SCL 04 // 22 for Arduino, 02 for ESP32
+#define I2C_SDA 04 // 21 for Arduino, 01 for ESP32
+#define I2C_SCL 05 // 22 for Arduino, 02 for ESP32
 
-const int buzzerPin = 9; 
-const int PushButton = 8;
+const int buzzerPin = 2; 
+const int PushButton = 1;
 
 
 unsigned long buzzStartTime = 0;  //tracks when the buzzing starts
 const unsigned long BuzzDuration = 5000;  //5 seconds in milliseconds (can be changed)
 bool isBuzzing = false;  //tracks if we're currently in a buzz cycle
+
 
 uint32_t timer = millis();
 
@@ -82,47 +83,6 @@ WiFiUDP udp;
 const char* remoteIP = "10.152.142.22";  // Replace with your computer's local IP
 const int remotePort = 80;  // Port to send data to
 
-
-// // Initialize MPU6050 ---need this??
-// void initMPU6050() {
-//     Wire.beginTransmission(MPU6050_ADDR);
-//     Wire.write(MPU6050_PWR_MGMT_1);  // Power Management 1 register
-//     Wire.write(0);                    // Wake up MPU6050 (remove sleep mode)
-//     Wire.endTransmission(true);
-// }
-
-// Read IMU data ---- dont use this 
-// IMUData readIMUData() {
-//     IMUData data;
-//     uint8_t buffer[14];
-    
-//     // Request 14 bytes from MPU6050
-//     Wire.beginTransmission(MPU6050_ADDR);
-//     Wire.write(MPU6050_ACCEL_XOUT_H);
-//     Wire.endTransmission(false);
-//     Wire.requestFrom(MPU6050_ADDR, 14, true);
-    
-//     // Read all 14 bytes
-//     for (int i = 0; i < 14; i++) {
-//         buffer[i] = Wire.read();
-//     }
-    
-//     // Convert raw data to actual values
-//     // MPU6050 default scale: ±2g for accelerometer, ±250°/s for gyroscope
-//     const float accel_scale = 2.0 * G / 32768.0;    // For ±2g range
-//     const float gyro_scale = 250.0 / 32768.0;       // For ±250°/s range
-
-//     data.acc_x = (int16_t)((buffer[0] << 8) | buffer[1]) * accel_scale;
-//     data.acc_y = (int16_t)((buffer[2] << 8) | buffer[3]) * accel_scale;
-//     data.acc_z = (int16_t)((buffer[4] << 8) | buffer[5]) * accel_scale;
-//     data.gyro_x = (int16_t)((buffer[8] << 8) | buffer[9]) * gyro_scale;
-//     data.gyro_y = (int16_t)((buffer[10] << 8) | buffer[11]) * gyro_scale;
-//     data.gyro_z = (int16_t)((buffer[12] << 8) | buffer[13]) * gyro_scale;
-    
-//     return data;
-// }
-
-
 float computeMovingAverage(float buffer[][3], int index, int axis) {
     float sum = 0;
     for (int i = 0; i < WINDOW_SIZE; i++) {
@@ -150,12 +110,6 @@ IMUData readIMUData() {
       offset_y = 0.06;
       offset_z = 1.56;
       
-
-      
-      // // Convert to meaningful values
-      //  data.acc_x = ax / 16384.0 * G;  // Convert to m/s²
-      //  data.acc_y = ay / 16384.0 * G;
-      //  data.acc_z = az / 16384.0 * +G;
        data.acc_x = round(a.acceleration.x + offset_x);  // Convert to m/s²
        data.acc_y = round(a.acceleration.y + offset_y);
        data.acc_z = round(a.acceleration.z + offset_z - 9.81);
@@ -166,50 +120,11 @@ IMUData readIMUData() {
       return data;
   }
 
-// // Process IMU data and update motion data
-// void processIMUData(IMUData imu_data, MotionData* motion, 
-//                    MovingAverage* filter_x, MovingAverage* filter_y, 
-//                    MovingAverage* filter_z) {
-//     float dt = 1.0f / SAMPLE_RATE;
-    
-//     // Apply moving average filter to acceleration data
-//     float filtered_acc_x = updateMovingAverage(filter_x, imu_data.acc_x);
-//     float filtered_acc_y = updateMovingAverage(filter_y, imu_data.acc_y);
-//     float filtered_acc_z = updateMovingAverage(filter_z, imu_data.acc_z - G);
-
-//     // Update velocity using filtered acceleration
-//     motion->vx = filtered_acc_x * dt;
-//     motion->vy = filtered_acc_y * dt;
-//     motion->vz = filtered_acc_z * dt;
-
-//     // Update position using velocity
-//     motion->x = motion->vx * dt;
-//     motion->y = motion->vy * dt;
-//     motion->z = motion->vz * dt;
-// }
-
 const int constraint = 5000;
 void processIMUData(IMUData imu_data, MotionData* motion) {
     currentTime = millis();  
     float dt = (currentTime - lastTime);  
     lastTime = currentTime;
-
-
-    // velocityBuffer[bufferIndex][0] = imu_data.acc_x * dt;
-    // velocityBuffer[bufferIndex][1] = imu_data.acc_y * dt;
-    // velocityBuffer[bufferIndex][2] = imu_data.acc_z * dt;
-
-    // motion->vx = computeMovingAverage(velocityBuffer, bufferIndex, 0);
-    // motion->vy = computeMovingAverage(velocityBuffer, bufferIndex, 1);
-    // motion->vz = computeMovingAverage(velocityBuffer, bufferIndex, 2);
-
-    // positionBuffer[bufferIndex][0] = motion->x + motion->vx * dt;
-    // positionBuffer[bufferIndex][1] = motion->y + motion->vy * dt;
-    // positionBuffer[bufferIndex][2] = motion->z + motion->vz * dt;
-
-    // motion->x = computeMovingAverage(positionBuffer, bufferIndex, 0) / 1000;
-    // motion->y = computeMovingAverage(positionBuffer, bufferIndex, 1) / 1000;
-    // motion->z = computeMovingAverage(positionBuffer, bufferIndex, 2) / 1000;
 
     motion->vx += (imu_data.acc_x - old_data.acc_x) * dt;
     motion->vy += (imu_data.acc_y - old_data.acc_y) * dt;
@@ -231,10 +146,6 @@ void processIMUData(IMUData imu_data, MotionData* motion) {
     
     
 }
-
-
-
-
 
 class KalmanFilterIMU {
 public:
@@ -343,13 +254,20 @@ void setup() {
 
 }
 
+void distress() {
+  udp.beginPacket(remoteIP, remotePort);
+  udp.print("Help!");
+  udp.endPacket();
+
+}
+
 const float process_noise = 0.05;
 const float measurement_noise = 0.05;
 const float covariance = 1.2;
 
 int i = 0;
 
-float threshold = 0.5*9.81;
+float threshold = 0.75*9.81;
 
 KalmanFilterIMU kf(process_noise, measurement_noise, covariance);
 
@@ -378,7 +296,7 @@ void loop() {
 
          float acc_mag;
 
-        acc_mag = sqrt(data.acc_x*data.acc_x + data.acc_y*data.acc_y + data.acc_z*data.acc_z);
+        acc_mag = sqrt(abs(data.acc_x*data.acc_x) + abs(data.acc_y*data.acc_y));
 
 
       int ButtonState = digitalRead(PushButton);
@@ -390,6 +308,7 @@ void loop() {
   if (acc_mag >= threshold && !isBuzzing){
     buzzStartTime = millis();
     isBuzzing = true;
+    
       }
 
   if (isBuzzing) { 
@@ -397,10 +316,12 @@ void loop() {
       // Create a square wave for buzzer tone
       digitalWrite(buzzerPin, HIGH);
       digitalWrite(LED_BUILTIN, HIGH);
+      distress();
       delayMicroseconds(250); // For ~500Hz tone
       delay(100);
       digitalWrite(buzzerPin, LOW);
       digitalWrite(LED_BUILTIN, LOW);
+      distress();
       delayMicroseconds(250);
       delay(100);
 
@@ -411,8 +332,6 @@ void loop() {
       isBuzzing = false;
     }
   }
-
-    // if (i == 2){
         udp.beginPacket(remoteIP, remotePort);
          udp.print(motion.x);
          udp.print(",");
@@ -454,14 +373,6 @@ void loop() {
         old_data.vx = motion.vx;
         old_data.vy = motion.vy;
         old_data.vz = motion.vz;
-
-        // Update timing
-        
-    // }
-    // else if (i > 10){
-    //   i = 0;
-    // }
-    // i++;
 
     delay(250);
 }

@@ -14,6 +14,3 @@ class Data:
         self.data["theta"].append(theta)
         self.data["omega"].append(w)
         
-
-
-
