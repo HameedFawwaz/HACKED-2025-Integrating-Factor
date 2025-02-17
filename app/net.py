@@ -1,5 +1,9 @@
 import socket
 
+import kalman
+
+import time
+
 UDP_IP = ""  # Listen on all available network interfaces
 UDP_PORT = 80  # Same as the ESP32 sender port
 
@@ -9,6 +13,15 @@ sock.bind((UDP_IP, UDP_PORT))
 print(f"Listening for UDP packets on port {UDP_PORT}...")
 
 while True:
-    data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
-    print(f"Received message: {data.decode()} from {addr}")
+    
+    data, _ = sock.recvfrom(1024)
+    data = data.decode()
 
+    if not data.startswith("Help!"):
+
+        data = data.split(",")
+        
+        data = list(map(float, data))
+    
+    else:
+        print("Distress Signal Detected!")
