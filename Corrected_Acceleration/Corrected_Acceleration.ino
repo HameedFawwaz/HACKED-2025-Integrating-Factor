@@ -16,11 +16,11 @@
 #define G               9.81    // Gravity constant
 
 // // I2C pins for ESP32 -- need this?
-#define I2C_SDA 05 // 21 for Arduino, 01 for ESP32
-#define I2C_SCL 04 // 22 for Arduino, 02 for ESP32
+#define I2C_SDA 4 // 21 for Arduino, 01 for ESP32
+#define I2C_SCL 5 // 22 for Arduino, 02 for ESP32
 
-const int buzzerPin = 9; 
-const int PushButton = 8;
+const int buzzerPin = 2; 
+const int PushButton = 1;
 
 
 unsigned long buzzStartTime = 0;  //tracks when the buzzing starts
@@ -28,10 +28,6 @@ const unsigned long BuzzDuration = 5000;  //5 seconds in milliseconds (can be ch
 bool isBuzzing = false;  //tracks if we're currently in a buzz cycle
 
 uint32_t timer = millis();
-
-
-
-
 
 Adafruit_MPU6050 mpu;
 
@@ -51,7 +47,6 @@ typedef struct {
     float x, y, z;
 } OldIMUData;
 
-
 // Structure to hold position and velocity
 typedef struct {
     float x, y, z;         // Position in meters
@@ -59,14 +54,12 @@ typedef struct {
 } MotionData;
 
 //IMU data init
-
 IMUData data;
 OldIMUData old_data;
 MotionData motion;
 unsigned long lastSampleTime = 0;
 unsigned long currentTime;
 unsigned long lastTime;
-
 
 // Buffers for moving average filter
 float velocityBuffer[WINDOW_SIZE][3] = {0};
@@ -81,7 +74,6 @@ const char* password = "12345678";  // Replace with your WiFi password
 WiFiUDP udp;
 const char* remoteIP = "10.152.142.22";  // Replace with your computer's local IP
 const int remotePort = 80;  // Port to send data to
-
 
 // // Initialize MPU6050 ---need this??
 // void initMPU6050() {
@@ -121,7 +113,6 @@ const int remotePort = 80;  // Port to send data to
     
 //     return data;
 // }
-
 
 float computeMovingAverage(float buffer[][3], int index, int axis) {
     float sum = 0;
@@ -224,17 +215,9 @@ void processIMUData(IMUData imu_data, MotionData* motion) {
     motion->y += (motion->vy - old_data.vy) * dt / 1000;
     motion->z += (motion->vz - old_data.vz) * dt / 1000;
 
-
-
     bufferIndex = (bufferIndex + 1) % WINDOW_SIZE;
     data.dt = dt;
-    
-    
 }
-
-
-
-
 
 class KalmanFilterIMU {
 public:
@@ -298,8 +281,6 @@ public:
     }
 };
 
-
-
 void setup() {
     Serial.begin(115200);
     
@@ -308,7 +289,6 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
     }
-
 
     Wire.begin(I2C_SDA, I2C_SCL);
     Wire.setClock(100000);
@@ -339,8 +319,6 @@ void setup() {
     old_data.acc_x = 0;
     old_data.acc_x = 0;
     old_data.acc_x = 0;
-    
-
 }
 
 const float process_noise = 0.05;
@@ -349,48 +327,39 @@ const float covariance = 1.2;
 
 int i = 0;
 
-float threshold = 0.5*9.81;
+float threshold = 0.75*9.81;
 
 KalmanFilterIMU kf(process_noise, measurement_noise, covariance);
 
 void loop() {
-    
   // Check if it's time for a new sample
-        // Read IMU data
-        IMUData imu_data = readIMUData(); 
+  // Read IMU data
+  IMUData imu_data = readIMUData(); 
         
-        
-        float accel_data[3] = {data.acc_x, data.acc_y, data.acc_z};
-        kf.predict();
-        kf.update(accel_data);
+  float accel_data[3] = {data.acc_x, data.acc_y, data.acc_z};
+  kf.predict();
+  kf.update(accel_data);
+  float filtered_accel[3];
+  kf.getFilteredAcceleration(filtered_accel);
+      
+  data.acc_x = filtered_accel[0];
+  data.acc_y = filtered_accel[1];
+  data.acc_z = filtered_accel[2];
 
-        float filtered_accel[3];
-        kf.getFilteredAcceleration(filtered_accel);
+  // // Process data
+  processIMUData(imu_data, &motion);
+  float acc_mag;
+  acc_mag = sqrt(data.acc_x*data.acc_x + data.acc_y*data.acc_y + data.acc_z*data.acc_z);
 
-        
-
-        data.acc_x = filtered_accel[0];
-        data.acc_y = filtered_accel[1];
-        data.acc_z = filtered_accel[2];
-
-        // // Process data
-         processIMUData(imu_data, &motion);
-
-         float acc_mag;
-
-        acc_mag = sqrt(data.acc_x*data.acc_x + data.acc_y*data.acc_y + data.acc_z*data.acc_z);
-
-
-      int ButtonState = digitalRead(PushButton);
-
-      if (ButtonState == true && !isBuzzing){ //this if checks if button is pressed and buzzer is not buzzing
-        buzzStartTime = millis();
-        isBuzzing = true;
-      }
+  int ButtonState = digitalRead(PushButton);
+  if (ButtonState == true && !isBuzzing){ //this if checks if button is pressed and buzzer is not buzzing
+    buzzStartTime = millis();
+    isBuzzing = true;
+  }
   if (acc_mag >= threshold && !isBuzzing){
     buzzStartTime = millis();
     isBuzzing = true;
-      }
+  }
 
   if (isBuzzing) { 
     if ((millis() - buzzStartTime) < BuzzDuration){ //this if statement checks if it's still in the 5second window
@@ -398,12 +367,11 @@ void loop() {
       digitalWrite(buzzerPin, HIGH);
       digitalWrite(LED_BUILTIN, HIGH);
       delayMicroseconds(250); // For ~500Hz tone
-      delay(100);
+      //delay(100);
       digitalWrite(buzzerPin, LOW);
       digitalWrite(LED_BUILTIN, LOW);
       delayMicroseconds(250);
-      delay(100);
-
+      //delay(100);
     }
     else {
       digitalWrite(buzzerPin, LOW);
@@ -414,19 +382,19 @@ void loop() {
 
     // if (i == 2){
         udp.beginPacket(remoteIP, remotePort);
-         udp.print(motion.x);
-         udp.print(",");
-         udp.print(motion.y);
-         udp.print(",");
-         udp.print(motion.z);
-         udp.print(",");
+        udp.print(motion.x);
+        udp.print(",");
+        udp.print(motion.y);
+        udp.print(",");
+        udp.print(motion.z);
+        udp.print(",");
 
-         udp.print(motion.vx);
-         udp.print(",");
-         udp.print(motion.vy);
-         udp.print(",");
-         udp.print(motion.vz);
-         udp.print(",");
+        udp.print(motion.vx);
+        udp.print(",");
+        udp.print(motion.vy);
+        udp.print(",");
+        udp.print(motion.vz);
+        udp.print(",");
 
         udp.print(data.acc_x);
         udp.print(",");
@@ -465,14 +433,3 @@ void loop() {
 
     delay(250);
 }
-
-
-
-
-
-
-
-
-
-
-
