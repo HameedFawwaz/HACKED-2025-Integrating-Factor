@@ -1,6 +1,12 @@
 #include <Adafruit_GPS.h>
 #include <HardwareSerial.h>
 
+const int buzzerPin = 5; 
+const int PushButton = 4;
+unsigned long buzzStartTime = 0;  //tracks when the buzzing starts
+const unsigned long BuzzDuration = 5000;  //5 seconds in milliseconds (can be changed)
+bool isBuzzing = false;  //tracks if we're currently in a buzz cycle
+
 // Create a HardwareSerial instance for UART1 on the ESP32-C3.
 HardwareSerial GPSSerial(1);  // Use UART1
 
@@ -12,10 +18,11 @@ uint32_t timer = millis();
 void setup() {
   // Start the Serial Monitor for debugging.
   Serial.begin(115200);
-  // while (!Serial) {
-  //   ; // wait for Serial port to connect
-  // }
-  Serial.println("ESP32-C3 GPS Debugging using UART1: Printing parsed data");
+  
+  pinMode(buzzerPin, OUTPUT); //makes pin5 output
+  pinMode(PushButton, INPUT); //makes pin4 input
+
+  // Serial.println("ESP32-C3 GPS Debugging using UART1: Printing parsed data");
 
   // Initialize UART1 for the GPS module.
   // Change RX and TX pins as needed. Here, RX is GPIO7 and TX is GPIO8.
@@ -108,6 +115,27 @@ void loop() {
     }
 
     Serial.println();  // Blank line for readability
+  }
+
+  int ButtonState = digitalRead(PushButton);
+
+  if (ButtonState == true && !isBuzzing){ //this if checks if button is pressed and buzzer is not buzzing
+    buzzStartTime = millis();
+    isBuzzing = true;
+  }
+
+  if (isBuzzing) { 
+    if ((millis() - buzzStartTime) < BuzzDuration){ //this if statement checks if it's still in the 5second window
+      // Create a square wave for buzzer tone
+      digitalWrite(buzzerPin, HIGH);
+      delayMicroseconds(1000); // For ~500Hz tone
+      digitalWrite(buzzerPin, LOW);
+      delayMicroseconds(1000);
+    }
+    else {
+      digitalWrite(buzzerPin, LOW);
+      isBuzzing = false;
+    }
   }
 }
 
